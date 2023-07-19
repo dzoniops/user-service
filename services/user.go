@@ -16,7 +16,7 @@ import (
 
 type Server struct {
 	pb.UnimplementedUserServiceServer
-	reservationClient reservation.ReservationClient
+	ReservationClient reservation.ReservationClient
 }
 
 func (s *Server) Register(
@@ -115,7 +115,7 @@ func (s *Server) Delete(c context.Context, req *pb.IdRequest) (*emptypb.Empty, e
 }
 
 func (s *Server) deleteGuest(c context.Context, id int64) (*emptypb.Empty, error) {
-	isEmpty, err := s.reservationClient.IsEmptyGuestActiveReservations(c, id)
+	isEmpty, err := s.ReservationClient.IsEmptyGuestActiveReservations(c, id)
 	if err != nil {
 		return &emptypb.Empty{}, err
 	}
