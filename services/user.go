@@ -6,14 +6,17 @@ import (
 	pb "github.com/dzoniops/common/pkg/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/dzoniops/user-service/auth"
+	reservation "github.com/dzoniops/user-service/client"
 	"github.com/dzoniops/user-service/db"
 	"github.com/dzoniops/user-service/models"
 )
 
 type Server struct {
 	pb.UnimplementedUserServiceServer
+	reservationClient reservation.ReservationClient
 }
 
 func (s *Server) Register(
@@ -93,4 +96,36 @@ func (s *Server) Update(c context.Context, req *pb.RegisterRequest) (*pb.Registe
 		Role:          req.Role,
 	}
 	return nil, nil
+}
+
+func (s *Server) Delete(c context.Context, req *pb.IdRequest) (*emptypb.Empty, error) {
+	var user models.User
+
+	if result := db.DB.Where(models.User{ID: req.Id}).First(&user); result.Error != nil {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
+	switch user.Role {
+	case "GUEST":
+		return s.deleteGuest(c, req.Id)
+	case "HOST":
+		return s.deleteHost(c, req.Id)
+	default:
+		return nil, status.Error(codes.Unknown, "User role not set to proper one")
+	}
+}
+
+func (s *Server) deleteGuest(c context.Context, id int64) (*emptypb.Empty, error) {
+	isEmpty, err := s.reservationClient.IsEmptyGuestActiveReservations(c, id)
+	if err != nil {
+		return &emptypb.Empty{}, err
+	}
+	if isEmpty {
+		db.DB.Delete(&models.User{}, id)
+		return &emptypb.Empty{}, nil
+	}
+	return &emptypb.Empty{}, status.Error(codes.Unavailable, "User has active reservations")
+}
+
+func (s *Server) deleteHost(c context.Context, id int64) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
