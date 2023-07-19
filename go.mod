@@ -18,7 +18,7 @@ require (
 )
 
 require (
-	github.com/dzoniops/common v0.0.0-20230717105451-45cc62119291
+	github.com/dzoniops/common v0.0.0-20230718085631-aa74b7dfc51d
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/joho/godotenv v1.5.1
