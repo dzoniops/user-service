@@ -11,7 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 
-	reservation "github.com/dzoniops/user-service/client"
+	"github.com/dzoniops/user-service/client"
 	"github.com/dzoniops/user-service/db"
 	"github.com/dzoniops/user-service/services"
 )
@@ -30,7 +30,7 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	reservationClient := reservation.InitClient(
+	reservationClient := client.InitReservationClient(
 		fmt.Sprintf("localhost:%s", os.Getenv("RESERVATION_PORT")),
 	)
 	s := grpc.NewServer()
