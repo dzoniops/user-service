@@ -9,14 +9,15 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/dzoniops/user-service/auth"
-	reservation "github.com/dzoniops/user-service/client"
+	"github.com/dzoniops/user-service/client"
 	"github.com/dzoniops/user-service/db"
 	"github.com/dzoniops/user-service/models"
 )
 
 type Server struct {
 	pb.UnimplementedUserServiceServer
-	ReservationClient reservation.ReservationClient
+	ReservationClient   client.ReservationClient
+	AccommodationClient client.AccommodationClient
 }
 
 func (s *Server) Register(
@@ -79,28 +80,43 @@ func (s *Server) GetUser(c context.Context, req *pb.IdRequest) (*pb.UserResponse
 	return data, nil
 }
 
-// TODO: password change
-func (s *Server) Update(c context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+func (s *Server) UpdatePassword(
+	c context.Context,
+	req *pb.PasswordRequest,
+) (*emptypb.Empty, error) {
 	var user models.User
+	if result := db.DB.Where(models.User{ID: req.Id}).First(&user); result.Error != nil {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
+	if !auth.CheckPasswordHash(req.OldPassword, user.Password) {
+		return nil, status.Error(codes.InvalidArgument, "Incorrect old password")
+	}
+	user.Password = auth.HashPassword(req.NewPassword)
+	db.DB.Save(&user)
+	return &emptypb.Empty{}, nil
+}
 
+func (s *Server) Update(
+	c context.Context,
+	req *pb.UserUpdateRequest,
+) (*pb.RegisterResponse, error) {
+	var user models.User
 	if result := db.DB.Where(models.User{Username: req.Username}).First(&user); result.Error != nil {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
-	user = models.User{
+	db.DB.Model(&user).Updates(models.User{
+		ID:            user.ID,
 		Email:         req.Email,
 		Username:      req.Username,
-		Password:      user.Password,
 		Name:          req.Name,
 		Surname:       req.Surname,
 		PlaceOfLiving: req.PlaceOfLiving,
-		Role:          req.Role,
-	}
-	return nil, nil
+	})
+	return &pb.RegisterResponse{Id: user.ID}, nil
 }
 
 func (s *Server) Delete(c context.Context, req *pb.IdRequest) (*emptypb.Empty, error) {
 	var user models.User
-
 	if result := db.DB.Where(models.User{ID: req.Id}).First(&user); result.Error != nil {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}

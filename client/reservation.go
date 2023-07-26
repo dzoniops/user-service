@@ -1,4 +1,4 @@
-package reservation
+package client
 
 import (
 	"context"
@@ -12,7 +12,7 @@ type ReservationClient struct {
 	client pb.ReservationServiceClient
 }
 
-func InitClient(url string) *ReservationClient {
+func InitReservationClient(url string) *ReservationClient {
 	conn, err := grpc.Dial(url, grpc.WithInsecure())
 	if err != nil {
 		fmt.Println("Could not connect:", err)
@@ -26,7 +26,7 @@ func (c *ReservationClient) IsEmptyGuestActiveReservations(
 	ctx context.Context,
 	id int64,
 ) (bool, error) {
-	res, err := c.client.ActivateReservationsGuest(ctx, &pb.IdRequest{Id: id})
+	res, err := c.client.ActiveReservationsGuest(ctx, &pb.IdRequest{Id: id})
 	if err != nil {
 		return false, err
 	}
