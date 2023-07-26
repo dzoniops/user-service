@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  web:
+    depends_on:
+      - db
+    build: 
+      context: .
+    hostname: rest-server
+    container_name: rest-server
+    ports:
+      - 80:8080
+    environment:
+      - PGUSER=${PGUSER:-postgres}
+      - PGPASSWORD=${PGPASSWORD:-pera}
+      - PGHOST=${PGHOST:-userdb}
+      - PGPORT=${PGPORT:-5432}
+      - PGDATABASE=${PGDATABASE:-go-example}
+        #    deploy:
+        #restart_policy:
+        #condition: on-failure 
+  db:
+    hostname: db
+    image: postgres
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+volumes:
+  pgdata:
