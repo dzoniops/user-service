@@ -52,7 +52,7 @@ func (s *Server) Login(c context.Context, req *pb.LoginRequest) (*pb.LoginRespon
 	var user models.User
 
 	if result := db.DB.Where(models.User{Username: req.Username}).First(&user); result.Error != nil {
-		return nil, status.Error(codes.NotFound, "Wrong username")
+		return nil, status.Error(codes.NotFound, "Wrong username or password")
 	}
 	if !auth.CheckPasswordHash(req.Password, user.Password) {
 		return nil, status.Error(codes.NotFound, "Wrong username or password")
@@ -91,8 +91,7 @@ func (s *Server) UpdatePassword(
 	if !auth.CheckPasswordHash(req.OldPassword, user.Password) {
 		return nil, status.Error(codes.InvalidArgument, "Incorrect old password")
 	}
-	user.Password = auth.HashPassword(req.NewPassword)
-	db.DB.Save(&user)
+	db.DB.Model(&user).Update("password",auth.HashPassword(req.NewPassword))
 	return &emptypb.Empty{}, nil
 }
 
