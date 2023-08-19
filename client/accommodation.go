@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 
 	pb "github.com/dzoniops/common/pkg/accommodation"
@@ -21,3 +22,10 @@ func InitAccommodationClient(url string) *AccommodationClient {
 	return &AccommodationClient{client: client}
 }
 
+func (c *AccommodationClient) DeleteAccommodationsByHost(ctx context.Context, hostId int64) error {
+	_, err := c.client.DeleteByHost(ctx, &pb.IdRequest{Id: hostId})
+	if err != nil {
+		return err
+	}
+	return nil
+}

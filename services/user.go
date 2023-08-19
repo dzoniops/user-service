@@ -85,13 +85,13 @@ func (s *Server) UpdatePassword(
 	req *pb.PasswordRequest,
 ) (*emptypb.Empty, error) {
 	var user models.User
-	if result := db.DB.Where(models.User{ID: req.Id}).First(&user); result.Error != nil {
+	if result := db.DB.Where(models.User{Username: req.Username}).First(&user); result.Error != nil {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
 	if !auth.CheckPasswordHash(req.OldPassword, user.Password) {
 		return nil, status.Error(codes.InvalidArgument, "Incorrect old password")
 	}
-	db.DB.Model(&user).Update("password",auth.HashPassword(req.NewPassword))
+	db.DB.Model(&user).Update("password", auth.HashPassword(req.NewPassword))
 	return &emptypb.Empty{}, nil
 }
 
@@ -142,5 +142,10 @@ func (s *Server) deleteGuest(c context.Context, id int64) (*emptypb.Empty, error
 }
 
 func (s *Server) deleteHost(c context.Context, id int64) (*emptypb.Empty, error) {
+	err := s.AccommodationClient.DeleteAccommodationsByHost(c,id)
+	if err != nil {
+		return nil, err
+		//return nil, status.Error(codes.Internal,err.Error())
+	}
 	return &emptypb.Empty{}, nil
 }
