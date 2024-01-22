@@ -2,16 +2,15 @@ package services
 
 import (
 	"context"
-
+	"errors"
 	pb "github.com/dzoniops/common/pkg/user"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
-
 	"github.com/dzoniops/user-service/auth"
 	"github.com/dzoniops/user-service/client"
 	"github.com/dzoniops/user-service/db"
 	"github.com/dzoniops/user-service/models"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Server struct {
@@ -142,10 +141,38 @@ func (s *Server) deleteGuest(c context.Context, id int64) (*emptypb.Empty, error
 }
 
 func (s *Server) deleteHost(c context.Context, id int64) (*emptypb.Empty, error) {
-	err := s.AccommodationClient.DeleteAccommodationsByHost(c,id)
+	err := s.AccommodationClient.DeleteAccommodationsByHost(c, id)
 	if err != nil {
 		return nil, err
 		//return nil, status.Error(codes.Internal,err.Error())
 	}
 	return &emptypb.Empty{}, nil
+}
+
+func (s *Server) Validate(_ context.Context, req *pb.ValidateRequest) (*pb.ValidateResponse, error) {
+	claims, err := auth.ValidateToken(req.AccessToken)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+	var user models.User
+
+	if result := db.DB.Where(&models.User{Username: claims.Username}).First(&user); result.Error != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	if s.checkRoles(req, claims.Role) != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+	return &pb.ValidateResponse{
+		UserId: user.ID,
+	}, nil
+}
+func (s *Server) checkRoles(req *pb.ValidateRequest, userRole string) error {
+
+	for _, role := range req.Roles {
+		if role == userRole {
+			return nil
+		}
+	}
+	return errors.New("user does not have needed role")
 }

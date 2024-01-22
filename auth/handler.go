@@ -14,8 +14,8 @@ import (
 // TODO: maybe add handler like in old project
 var jwtKey = []byte("my_secret_key")
 
-type jwtClaims struct {
-	*jwt.StandardClaims
+type JwtClaims struct {
+	*jwt.RegisteredClaims
 	Id       int64
 	Username string
 	Role     string
@@ -32,10 +32,9 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 func GenerateToken(user models.User) (signedToken string, err error) {
-	claims := &jwtClaims{
-		StandardClaims: &jwt.StandardClaims{
-			ExpiresAt: time.Now().Local().Add(time.Hour * time.Duration(100)).Unix(),
-		},
+	claims := &JwtClaims{
+		RegisteredClaims: &jwt.RegisteredClaims{
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Local().Add(time.Hour * time.Duration(100))}},
 		Id:       user.ID,
 		Username: user.Username,
 		Role:     user.Role,
@@ -48,10 +47,10 @@ func GenerateToken(user models.User) (signedToken string, err error) {
 	return signedToken, nil
 }
 
-func ValidateToken(signedToken string) (claims *jwtClaims, err error) {
+func ValidateToken(signedToken string) (claims *JwtClaims, err error) {
 	token, err := jwt.ParseWithClaims(
 		signedToken,
-		&jwtClaims{},
+		&JwtClaims{},
 		func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		},
@@ -60,12 +59,12 @@ func ValidateToken(signedToken string) (claims *jwtClaims, err error) {
 		return nil, err
 	}
 	if !token.Valid {
-		return nil, errors.New("Invalid token")
+		return nil, errors.New("invalid token")
 	}
-	claims, ok := token.Claims.(*jwtClaims)
+	claims, ok := token.Claims.(*JwtClaims)
 
 	if !ok {
-		return nil, errors.New("Couldn't parse claims")
+		return nil, errors.New("couldn't parse claims")
 	}
 
 	return claims, nil
