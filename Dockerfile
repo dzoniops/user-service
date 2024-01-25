@@ -3,7 +3,7 @@ FROM golang:1.19 AS BuildStage
 
 WORKDIR /app
 
-COPY . .
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY *.go ./
