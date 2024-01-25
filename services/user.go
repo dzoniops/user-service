@@ -165,6 +165,7 @@ func (s *Server) Validate(_ context.Context, req *pb.ValidateRequest) (*pb.Valid
 	}
 	return &pb.ValidateResponse{
 		UserId: user.ID,
+		Role:   user.Role,
 	}, nil
 }
 func (s *Server) checkRoles(req *pb.ValidateRequest, userRole string) error {
