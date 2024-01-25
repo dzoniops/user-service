@@ -2,21 +2,21 @@ package services
 
 import (
 	"context"
-
+	"errors"
 	pb "github.com/dzoniops/common/pkg/user"
+	"github.com/dzoniops/user-service/auth"
+	"github.com/dzoniops/user-service/client"
+	"github.com/dzoniops/user-service/db"
+	"github.com/dzoniops/user-service/models"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-
-	"github.com/dzoniops/user-service/auth"
-	reservation "github.com/dzoniops/user-service/client"
-	"github.com/dzoniops/user-service/db"
-	"github.com/dzoniops/user-service/models"
 )
 
 type Server struct {
 	pb.UnimplementedUserServiceServer
-	ReservationClient reservation.ReservationClient
+	ReservationClient   client.ReservationClient
+	AccommodationClient client.AccommodationClient
 }
 
 func (s *Server) Register(
@@ -51,7 +51,7 @@ func (s *Server) Login(c context.Context, req *pb.LoginRequest) (*pb.LoginRespon
 	var user models.User
 
 	if result := db.DB.Where(models.User{Username: req.Username}).First(&user); result.Error != nil {
-		return nil, status.Error(codes.NotFound, "Wrong username")
+		return nil, status.Error(codes.NotFound, "Wrong username or password")
 	}
 	if !auth.CheckPasswordHash(req.Password, user.Password) {
 		return nil, status.Error(codes.NotFound, "Wrong username or password")
@@ -79,28 +79,42 @@ func (s *Server) GetUser(c context.Context, req *pb.IdRequest) (*pb.UserResponse
 	return data, nil
 }
 
-// TODO: password change
-func (s *Server) Update(c context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+func (s *Server) UpdatePassword(
+	c context.Context,
+	req *pb.PasswordRequest,
+) (*emptypb.Empty, error) {
 	var user models.User
-
 	if result := db.DB.Where(models.User{Username: req.Username}).First(&user); result.Error != nil {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
-	user = models.User{
+	if !auth.CheckPasswordHash(req.OldPassword, user.Password) {
+		return nil, status.Error(codes.InvalidArgument, "Incorrect old password")
+	}
+	db.DB.Model(&user).Update("password", auth.HashPassword(req.NewPassword))
+	return &emptypb.Empty{}, nil
+}
+
+func (s *Server) Update(
+	c context.Context,
+	req *pb.UserUpdateRequest,
+) (*pb.RegisterResponse, error) {
+	var user models.User
+	if result := db.DB.Where(models.User{Username: req.Username}).First(&user); result.Error != nil {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
+	db.DB.Model(&user).Updates(models.User{
+		ID:            user.ID,
 		Email:         req.Email,
 		Username:      req.Username,
-		Password:      user.Password,
 		Name:          req.Name,
 		Surname:       req.Surname,
 		PlaceOfLiving: req.PlaceOfLiving,
-		Role:          req.Role,
-	}
-	return nil, nil
+	})
+	return &pb.RegisterResponse{Id: user.ID}, nil
 }
 
 func (s *Server) Delete(c context.Context, req *pb.IdRequest) (*emptypb.Empty, error) {
 	var user models.User
-
 	if result := db.DB.Where(models.User{ID: req.Id}).First(&user); result.Error != nil {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
@@ -127,5 +141,39 @@ func (s *Server) deleteGuest(c context.Context, id int64) (*emptypb.Empty, error
 }
 
 func (s *Server) deleteHost(c context.Context, id int64) (*emptypb.Empty, error) {
+	err := s.AccommodationClient.DeleteAccommodationsByHost(c, id)
+	if err != nil {
+		return nil, err
+		//return nil, status.Error(codes.Internal,err.Error())
+	}
 	return &emptypb.Empty{}, nil
+}
+
+func (s *Server) Validate(_ context.Context, req *pb.ValidateRequest) (*pb.ValidateResponse, error) {
+	claims, err := auth.ValidateToken(req.AccessToken)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+	var user models.User
+
+	if result := db.DB.Where(&models.User{Username: claims.Username}).First(&user); result.Error != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	if s.checkRoles(req, claims.Role) != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+	return &pb.ValidateResponse{
+		UserId: user.ID,
+		Role:   user.Role,
+	}, nil
+}
+func (s *Server) checkRoles(req *pb.ValidateRequest, userRole string) error {
+
+	for _, role := range req.Roles {
+		if role == userRole {
+			return nil
+		}
+	}
+	return errors.New("user does not have needed role")
 }
