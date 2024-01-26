@@ -8,22 +8,33 @@ services:
     hostname: user-service
     container_name: user-service
     ports:
-      - 80:8080
+      - 80:${PORT:-6969}
+    networks:
+      - backend
     environment:
       - PGUSER=${PGUSER:-postgres}
-      - POSTGRES_PASSWORD=${PGPASSWORD:-postgres}
+      - PGPASSWORD=${PGPASSWORD:-postgres}
       - PGHOST=${PGHOST:-db}
       - PGPORT=${PGPORT:-5432}
-      - PGDATABASE=${PGDATABASE:-user-db}
-        #    deploy:
-        #restart_policy:
+      - PGDATABASE=${PGDATABASE:-userdb}
+      - PORT=${PORT:-6969}
+      #restart_policy:
       #condition: on-failure
   db:
     hostname: db
     image: postgres
-    volumes:
-      - ./pgdata:/var/lib/postgresql/data
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=userdb
     ports:
       - 5432:5432
-volumes:
-  pgdata:
+    networks:
+      - backend
+#volumes:
+
+
+networks:
+  backend:
+    driver: bridge

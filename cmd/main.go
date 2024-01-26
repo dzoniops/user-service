@@ -8,7 +8,6 @@ import (
 	"os"
 
 	pb "github.com/dzoniops/common/pkg/user"
-	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 
 	reservation "github.com/dzoniops/user-service/client"
@@ -17,10 +16,10 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	//err := godotenv.Load()
+	//if err != nil {
+	//	log.Fatal("Error loading .env file")
+	//}
 	db.InitDB()
 
 	flag.Parse()
