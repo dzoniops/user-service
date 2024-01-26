@@ -3,10 +3,10 @@ services:
   web:
     depends_on:
       - db
-    build: 
+    build:
       context: .
-    hostname: rest-server
-    container_name: rest-server
+    hostname: user-service
+    container_name: user-service
     ports:
       - 80:8080
     environment:
@@ -14,10 +14,10 @@ services:
       - POSTGRES_PASSWORD=${PGPASSWORD:-postgres}
       - PGHOST=${PGHOST:-db}
       - PGPORT=${PGPORT:-5432}
-      - PGDATABASE=${PGDATABASE:-go-example}
+      - PGDATABASE=${PGDATABASE:-user-db}
         #    deploy:
         #restart_policy:
-        #condition: on-failure 
+      #condition: on-failure
   db:
     hostname: db
     image: postgres
