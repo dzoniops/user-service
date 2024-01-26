@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY *.go ./
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /user-service main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /user-service
 
 # Run the tests in the container
 FROM alpine:latest
